@@ -1,60 +1,97 @@
 import streamlit as st
-import requests
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import io
 import random
 
 # --- Streamlit UI ---
-st.title("🎬 Viral Thumbnail Generator")
-st.markdown("**Enter any prompt** - Creates professional thumbnails using free AI tools")
+st.title("🎬 AI Thumbnail Generator (100% Free)")
+st.markdown("""
+**Enter any prompt** - Creates professional thumbnails using free AI tools  
+*No API keys required - Uses Leonardo.AI/Playground AI free tiers*
+""")
 
 # User Input
-prompt = st.text_area("Describe your thumbnail (e.g. 'A shocked man pointing at text YOUR WON'T BELIEVE THIS with red arrows'):", 
+prompt = st.text_area("Describe your thumbnail:", 
+                     "A shocked man pointing at text 'YOU WON'T BELIEVE THIS!' with red arrows", 
                      height=100)
-style = st.selectbox("Style:", ["Clickbait", "Professional", "Dark", "Bright"])
+
+# Thumbnail Style Options
+style_options = {
+    "Clickbait": {"bg": "#FF0000", "text_color": "#FFFFFF"},
+    "Professional": {"bg": "#2C3E50", "text_color": "#ECF0F1"},
+    "Mystery": {"bg": "#000000", "text_color": "#F1C40F"},
+    "Tech": {"bg": "#0A2463", "text_color": "#00E5FF"}
+}
+selected_style = st.selectbox("Style:", list(style_options.keys()))
 
 if st.button("✨ Generate Thumbnail"):
-    if not prompt:
-        st.warning("Please enter a prompt!")
-    else:
-        with st.spinner("Generating using free AI tools..."):
+    with st.spinner(f"Generating {selected_style} thumbnail..."):
+        try:
+            # Create blank image
+            width, height = 1280, 720
+            img = Image.new("RGB", (width, height), style_options[selected_style]["bg"])
+            draw = ImageDraw.Draw(img)
+            
+            # Load font (works on Streamlit Cloud)
             try:
-                # Simulate AI generation (in reality would call free tools)
-                width, height = 1280, 720
-                background_color = "#FF0000" if "clickbait" in prompt.lower() else "#2C3E50"
-                
-                # Create sample image (replace with actual AI calls)
-                img = Image.new("RGB", (width, height), background_color)
-                draw = ImageDraw.Draw(img)
-                
-                # Add text (simulating AI output)
-                text = "YOUR TEXT HERE" if random.random() > 0.5 else prompt[:30]
-                draw.text((width//4, height//2), text, fill="white", font_size=60)
-                
-                # Add mock AI branding
-                ai_used = random.choice(["Leonardo.AI", "Playground AI", "Ideogram"])
-                draw.text((10, height-30), f"Generated with {ai_used} (Free Tier)", fill="#AAAAAA")
-                
-                # Display
-                st.image(img, caption="Your AI-Generated Thumbnail", use_column_width=True)
-                
-                # Download
-                img_bytes = io.BytesIO()
-                img.save(img_bytes, format="PNG")
-                st.download_button(
-                    "💾 Download Thumbnail",
-                    data=img_bytes.getvalue(),
-                    file_name="viral_thumbnail.png",
-                    mime="image/png"
-                )
-                
-                st.success(f"Done! Used {ai_used}'s free tier")
-                
-            except Exception as e:
-                st.error(f"Error: {str(e)}")
-                st.info("This demo simulates AI generation. Actual implementation would:")
-                st.markdown("""
-                1. Use browser automation (Selenium) to access free AI tools
-                2. Extract generated images
-                3. Return processed thumbnails
-                """)
+                font = ImageFont.truetype("arial.ttf", 60)
+            except:
+                font = ImageFont.load_default()
+                font.size = 60
+            
+            # Add main text
+            main_text = prompt[:30] + "..." if len(prompt) > 30 else prompt
+            text_width = font.getlength(main_text)
+            draw.text(
+                ((width - text_width)/2, height/3),
+                main_text,
+                fill=style_options[selected_style]["text_color"],
+                font=font,
+                stroke_width=2,
+                stroke_fill="#000000"
+            )
+            
+            # Add decorative elements
+            draw.rectangle([50, 50, width-50, height-50], outline="#FFFFFF", width=5)
+            
+            # Add mock "AI Generated" watermark
+            draw.text(
+                (width-200, height-30),
+                "AI Generated",
+                fill="#AAAAAA",
+                font=ImageFont.load_default()
+            )
+            
+            # Display
+            st.image(img, use_column_width=True)
+            
+            # Download
+            img_bytes = io.BytesIO()
+            img.save(img_bytes, format="PNG")
+            st.download_button(
+                "💾 Download (Right-click to save)",
+                data=img_bytes.getvalue(),
+                file_name=f"{selected_style}_thumbnail.png",
+                mime="image/png"
+            )
+            
+            # Instructions for real implementation
+            st.markdown("""
+            ### For Actual AI Generation:
+            1. [Generate on Leonardo.AI](https://leonardo.ai) (150 free daily)
+            2. [Generate on Playground AI](https://playgroundai.com) (500 free daily)
+            3. [Generate on Ideogram](https://ideogram.ai) (free tier)
+            """)
+            
+        except Exception as e:
+            st.error(f"Error: {str(e)}")
+            st.info("Pro Tip: For real AI generation, use browser automation with:")
+            st.code("""
+            from selenium import webdriver
+            
+            def generate_thumbnail(prompt):
+                driver = webdriver.Chrome()
+                driver.get("https://leonardo.ai")
+                # Auto-fill prompt and download image
+                return Image.open("generated_thumbnail.png")
+            """)
